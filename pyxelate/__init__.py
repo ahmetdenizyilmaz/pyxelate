@@ -1,12 +1,17 @@
-__version__ = "2.2.0"
-
-__short_description__ = (
-    "Downsample images to 8-bit pixel art.",
-)
-__license__ = "MIT"
-__author__ = "Richard Nagyfi"
-__github_username__ = "sedthh"
-
-from .pal import Pal
 from .pyx import Pyx
+from .pal import Pal
 from .vid import Vid
+from .styles import apply_style, list_styles, render_styles_showcase, STYLE_CATALOG
+from .motion import analyze_frames_motion, analyze_video_motion
+
+__all__ = [
+    "Pyx",
+    "Pal",
+    "Vid",
+    "apply_style",
+    "list_styles",
+    "render_styles_showcase",
+    "STYLE_CATALOG",
+    "analyze_frames_motion",
+    "analyze_video_motion",
+]
