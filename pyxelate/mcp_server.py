@@ -19,6 +19,7 @@ from .pyx import Pyx
 from .pal import Pal
 from .styles import apply_style, list_styles, render_styles_showcase, STYLE_FUNCTIONS
 from .motion import analyze_video_motion, sync_video_motion_to_audio
+from .triggers import extract_video_sound_triggers, load_trigger_catalog
 
 
 TOOLS_SCHEMA: List[Dict[str, Any]] = [
@@ -133,6 +134,19 @@ TOOLS_SCHEMA: List[Dict[str, Any]] = [
                 "bass_punch_strength": {"type": "number", "default": 0.062},
             },
             "required": ["input_video", "audio_wav", "output_video"],
+        },
+    },
+    {
+        "name": "video_extract_sound_triggers",
+        "description": "Extracts generalized movement-to-sound triggers (camera_zoom_in/out, hud_text_typing, state_confirm_chime, sustained_acceleration_riser, energy_emission_burst, mechanical_step_train, micro_particle_collision) and automatic musical arrangement regimes (intro_ambient, macro_driving_pulse, macro_double_time_accel, micro_ambient_particles, resolution_outro) from any video.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "video_path": {"type": "string", "description": "Input video file path."},
+                "max_frames": {"type": "integer", "description": "Optional max frames."},
+                "include_catalog": {"type": "boolean", "default": False},
+            },
+            "required": ["video_path"],
         },
     },
 ]
@@ -268,6 +282,15 @@ def _handle_tool_call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             phrase_zoom_strength=float(args.get("phrase_zoom_strength", 0.16)),
             bass_punch_strength=float(args.get("bass_punch_strength", 0.062)),
         )
+        res["elapsed_s"] = round(time.perf_counter() - t0, 2)
+        return res
+
+    if name == "video_extract_sound_triggers":
+        res = extract_video_sound_triggers(
+            args["video_path"], max_frames=args.get("max_frames")
+        )
+        if args.get("include_catalog"):
+            res["catalog"] = load_trigger_catalog()
         res["elapsed_s"] = round(time.perf_counter() - t0, 2)
         return res
 

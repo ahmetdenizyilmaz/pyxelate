@@ -1,0 +1,89 @@
+{
+  "schema": "pyxelate-generalized-sound-triggers",
+  "version": "1.0.0",
+  "description": "Generalized computer-vision movement-to-sound & musical regime rules applicable to any mechanism, science explainer, UI, documentary, or pixel-art video.",
+  "acoustic_design_principles": {
+    "harmonic_bed_headroom": "Use low-harmonic (H2/H1 < 0.18) warm triangle sub-bass + soft low-pass filtered ostinato plucks cycling through a minimalist 3-chord loop (e.g. i -> VI -> III or vi -> IV -> I) so 800-8000 Hz remains completely open for discrete visual movement triggers.",
+    "regime_switching": "Switch drum/bass rhythm density automatically based on visual scene topology rather than running a static drum beat over the entire video.",
+    "continuous_vs_discrete": "Continuous camera/flow movements (zooms, accelerations) map to continuous Hz/semitone pitch glides; discrete sub-part movements (UI text, buttons, blades, collisions, shrinking cells) map to tight <90ms transient ticks, chimes, pings, and pops."
+  },
+  "regimes": [
+    {
+      "id": "intro_ambient",
+      "visual_condition": "Opening establisher before first structural beat anchor (< ~7% of video or pre-first major scene setup).",
+      "musical_behavior": "Hold back kick & hi-hats; play soft 3-chord ostinato plucks + discrete UI/zoom triggers."
+    },
+    {
+      "id": "macro_driving_pulse",
+      "visual_condition": "Connected structural geometry (midtone surface coverage >= 18%).",
+      "musical_behavior": "Steady 4-on-the-floor kick + eighth-note low-pass sub-bass pulse + minimalist 3-chord arpeggio bed."
+    },
+    {
+      "id": "macro_double_time_accel",
+      "visual_condition": "Sustained multi-second high laminar flow or monotonic energy buildup.",
+      "musical_behavior": "Double-time 16th/8th driving sub-bass pulse + multi-bar ascending pitch riser climbing across octaves."
+    },
+    {
+      "id": "micro_ambient_particles",
+      "visual_condition": "High dark-void background (>= 70%) with sparse floating/colliding small particles and low large-surface coverage (< 18%).",
+      "musical_behavior": "Mute all drums & hi-hats; switch sub-bass to sustained whole-note ambient drone; fire crystalline droplet/bell pings on discrete particle collision peaks."
+    },
+    {
+      "id": "resolution_outro",
+      "visual_condition": "Final settling scene after last major cut with declining motion energy.",
+      "musical_behavior": "Fade percussion; resolve 3-chord ostinato onto warm sustained tonic triad."
+    }
+  ],
+  "triggers": [
+    {
+      "id": "camera_zoom_in",
+      "cv_detector": "Positive radial optical-flow divergence + expanding salience second-moment radius.",
+      "soundbit_preset": "trig_zoom_sweep_pure",
+      "layer_preset": "trig_whoosh_air_burst",
+      "pitch_mapping": "Continuous upward consonant glide (+12 or +19 semitones) across exact zoom duration."
+    },
+    {
+      "id": "camera_zoom_out",
+      "cv_detector": "Negative radial optical-flow divergence + contracting salience second-moment radius.",
+      "soundbit_preset": "trig_zoom_sweep_pure",
+      "layer_preset": "trig_whoosh_air_burst",
+      "pitch_mapping": "Continuous downward consonant glide (-12 or -19 semitones) across exact zoom-out duration."
+    },
+    {
+      "id": "hud_text_typing",
+      "cv_detector": "Positive step delta of high-contrast monochrome bright pixels in HUD/caption zones.",
+      "soundbit_preset": "trig_ui_text_tick",
+      "pitch_mapping": "Ultra-short 20ms 3.1 kHz mechanical typewriter ticks locked to text emergence frames."
+    },
+    {
+      "id": "state_confirm_chime",
+      "cv_detector": "Localized compact high-saturation indicator/badge/button activation.",
+      "soundbit_preset": "trig_confirm_chime",
+      "pitch_mapping": "Two-note rising fifth (+7 semitones) glassy FM confirmation chime."
+    },
+    {
+      "id": "sustained_acceleration_riser",
+      "cv_detector": "Multi-second (>= 2.5s) sustained laminar flow / energy buildup within a shot.",
+      "soundbit_preset": "trig_zoom_sweep_pure",
+      "pitch_mapping": "Multi-bar continuous ascending harmonic pitch ramp + accelerating bass subdivision."
+    },
+    {
+      "id": "energy_emission_burst",
+      "cv_detector": "Sharp positive surge in bright high-chroma emissive pixels (beams, flashes, plasma, sparks).",
+      "soundbit_preset": "trig_whoosh_air_burst",
+      "pitch_mapping": "Filtered air/radiation noise burst paired with sub-bass transient thump."
+    },
+    {
+      "id": "mechanical_step_train",
+      "cv_detector": "Cluster of >= 4 rhythmic motion-energy sub-peaks (2-10 Hz) within a structural or grid shot.",
+      "soundbit_preset": "trig_stepped_mech_pop",
+      "pitch_mapping": "Tactile 75ms pitch-stepped pulse pops (alternating octave/fifth or descending/ascending with object area)."
+    },
+    {
+      "id": "micro_particle_collision",
+      "cv_detector": "Motion transient spike inside a micro_ambient_particles regime.",
+      "soundbit_preset": "trig_micro_droplet_ping",
+      "pitch_mapping": "High-register (octaves 5-6) upward-chirping crystalline droplet/ionization bell ping."
+    }
+  ]
+}
