@@ -176,3 +176,21 @@ It is possible to use Pyxelate on a sequence of images to create animations via 
 | sensitivity | The percentage of difference between pixels required for two areas to be considered different. Default is `0.10`, lower it if you see unwanted artifacts in your animation, raise it if you want a more layered look. |
 
 You can turn a video into a sequence of images using [ffmpeg](https://www.ffmpeg.org/).
+
+## MCP Server, 12 Reel Visual Styles & Bidirectional Music-Motion Sync
+
+This fork adds Numba-accelerated kernels (`pyxelate/fast_ops.py`), 12 visual Reel styles (`pyxelate/styles.py`), computer-vision motion/zoom analysis + post-music camera zoom refinement (`pyxelate/motion.py`), and a Model Context Protocol (MCP) stdio server (`pyxelate/mcp_server.py`).
+
+Run the MCP server:
+```bash
+python -m pyxelate.mcp_server
+```
+
+Available MCP tools:
+- `style_list` — Lists all 12 built-in visual styles (`pc98_cyber`, `kurzgesagt_glow`, `chunky_cartoon`, `bitwonder_bayer`, `aloboi_dreamcore`, `oscilloscope_xy`, `isometric_voxel_bevel`, `neon_blueprint`, `gameboy_dmg_lcd`, `thermal_synthwave`, `halftone_pop_manga`, `crt_arcade_1989`).
+- `image_stylize` — Stylizes an image using any of the 12 styles or classic `Pyx`.
+- `image_showcase_12_styles` — Renders a 4x3 labeled contact sheet of all 12 styles.
+- `video_analyze_motion` — Extracts major scene cuts, consonant camera zoom-in/zoom-out windows (`±5`, `±7`, `±12` semitones), focal centroids, and per-frame motion energy for audio composition.
+- `video_stylize` — Stylizes a video clip and optionally muxes a WAV soundtrack.
+- `video_sync_motion_to_audio` — Refines a video's camera zooms, pullbacks, focal tracking, and sub-bass (`20–135 Hz`) micro-zoom punches in high-resolution pre-pixel space to lock onto a rendered music WAV track before applying pixel stylization (e.g. `pc98_cyber`).
+

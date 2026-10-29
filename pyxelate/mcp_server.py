@@ -18,7 +18,7 @@ import imageio.v3 as iio
 from .pyx import Pyx
 from .pal import Pal
 from .styles import apply_style, list_styles, render_styles_showcase, STYLE_FUNCTIONS
-from .motion import analyze_video_motion
+from .motion import analyze_video_motion, sync_video_motion_to_audio
 
 
 TOOLS_SCHEMA: List[Dict[str, Any]] = [
@@ -117,6 +117,24 @@ TOOLS_SCHEMA: List[Dict[str, Any]] = [
             "required": ["input_video", "output_video"],
         },
     },
+    {
+        "name": "video_sync_motion_to_audio",
+        "description": "Refines video camera zooms, pullbacks, focal tracking, and sub-bass micro-zoom punches in pre-pixel high-res space to lock tightly onto a rendered music WAV track, then applies a visual style (default 'pc98_cyber') and muxes the final MP4.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "input_video": {"type": "string", "description": "Input high-res video path."},
+                "audio_wav": {"type": "string", "description": "Rendered music WAV path to lock zooms onto."},
+                "output_video": {"type": "string", "description": "Output synced & stylized MP4 path."},
+                "bpm": {"type": "number", "default": 120.0},
+                "style": {"type": "string", "default": "pc98_cyber"},
+                "factor": {"type": "integer", "default": 3},
+                "phrase_zoom_strength": {"type": "number", "default": 0.16},
+                "bass_punch_strength": {"type": "number", "default": 0.062},
+            },
+            "required": ["input_video", "audio_wav", "output_video"],
+        },
+    },
 ]
 
 
@@ -197,11 +215,16 @@ def _handle_tool_call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
 
         Path(out_vid).parent.mkdir(parents=True, exist_ok=True)
         if audio_wav:
+            import shutil
+            ffmpeg_bin = shutil.which("ffmpeg")
+            if not ffmpeg_bin:
+                import imageio_ffmpeg
+                ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
             tmp_vid = str(Path(out_vid).with_suffix(".silent.mp4"))
             iio.imwrite(tmp_vid, styled_frames, fps=fps, codec="libx264")
             subprocess.run(
                 [
-                    "ffmpeg",
+                    ffmpeg_bin,
                     "-y",
                     "-i",
                     tmp_vid,
@@ -233,6 +256,20 @@ def _handle_tool_call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             "style": style,
             "elapsed_s": round(time.perf_counter() - t0, 2),
         }
+
+    if name == "video_sync_motion_to_audio":
+        res = sync_video_motion_to_audio(
+            input_video=args["input_video"],
+            audio_wav=args["audio_wav"],
+            output_video=args["output_video"],
+            bpm=float(args.get("bpm", 120.0)),
+            style=args.get("style", "pc98_cyber"),
+            factor=int(args.get("factor", 3)),
+            phrase_zoom_strength=float(args.get("phrase_zoom_strength", 0.16)),
+            bass_punch_strength=float(args.get("bass_punch_strength", 0.062)),
+        )
+        res["elapsed_s"] = round(time.perf_counter() - t0, 2)
+        return res
 
     raise ValueError(f"Unknown tool: {name}")
 

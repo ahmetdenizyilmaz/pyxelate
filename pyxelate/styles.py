@@ -496,20 +496,40 @@ def _style_pc98_cyber(
     """NEC PC-9801 16-Color Japanese Cyber-Anime ordered dither style."""
     h, w, _ = rgb.shape
     tile = max(2, int(factor))
+    sh, sw = max(48, h // tile), max(48, w // tile)
     small = _lift_tones(
-        equalize_adapthist_fast(resize_float(rgb, max(48, h // tile), max(48, w // tile), anti_aliasing=True)),
-        gamma=0.82,
+        equalize_adapthist_fast(resize_float(rgb, sh, sw, anti_aliasing=True)),
+        gamma=0.80,
     )
 
-    # Slight cyan/magenta anime tint
-    tinted = np.clip(small * np.array([1.05, 0.96, 1.12]), 0.0, 1.0)
-    pix = _quantize_with_bayer(tinted, PC98_PALETTE, spread=0.095, use_8x8=False)
+    # 1. Fast 1px edge-preserving Kuwahara cel-clean pass eliminates video grain
+    #    so 4x4 Bayer crosshatches stay temporally rock-solid across frames
+    clean = kuwahara_filter_numba(small, radius=1)
 
-    # Reinforce dark anime linework
-    edges = _edge_magnitude(small)
-    pix[edges > 0.34] = PC98_PALETTE[0]
+    # 2. Boost chroma + classic NEC PC-9801 cyan/magenta/violet anime split-tint
+    hsv = rgb2hsv_fast(clean)
+    hsv[:, :, 1] = np.clip(hsv[:, :, 1] * 1.24 + 0.06, 0.0, 1.0)
+    vivid = hsv2rgb_fast(hsv)
+    tinted = np.clip(vivid * np.array([1.05, 0.97, 1.12]), 0.0, 1.0)
 
+    # 3. Ordered 4x4 Bayer dithering in perceptual OKLab space onto 16-color PC-9801 ramp
+    pix = _quantize_with_bayer(tinted, PC98_PALETTE, spread=0.092, use_8x8=False)
+
+    # 4. Dual-edge anime linework: neon cyan/amber specular rims + crisp #080614 dark ink
+    edges = _edge_magnitude(clean)
+    luma = 0.299 * clean[:, :, 0] + 0.587 * clean[:, :, 1] + 0.114 * clean[:, :, 2]
+    rim_mask = (edges > 0.24) & (edges <= 0.35) & (luma > 0.62)
+    warm_rim = rim_mask & (clean[:, :, 0] > clean[:, :, 2] + 0.08)
+    cool_rim = rim_mask & ~warm_rim
+    pix[cool_rim] = PC98_PALETTE[11]  # #00f5d4 neon cyber cyan rim
+    pix[warm_rim] = PC98_PALETTE[13]  # #ffd166 amber thruster/city rim
+    pix[edges > 0.35] = PC98_PALETTE[0]  # #080614 deep PC-98 anime ink
+
+    # 5. Crisp integer pixel upscale + subtle NEC 640x400 RGB monitor scanline definition
     up = np.repeat(np.repeat(pix, tile, axis=0), tile, axis=1)
+    uh = up.shape[0]
+    scan = np.where((np.arange(uh) % tile) == (tile - 1), 0.91, 1.0)[:, None, None]
+    up = np.clip(up * scan, 0.0, 1.0)
     return resize_float(up, h, w, anti_aliasing=False)
 
 
