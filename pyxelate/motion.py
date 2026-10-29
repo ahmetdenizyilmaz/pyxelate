@@ -183,7 +183,6 @@ def analyze_frames_motion(
 
 def analyze_video_motion(video_path: str, max_frames: Optional[int] = None) -> Dict[str, Any]:
     """Reads a video file from disk and runs full motion, scene-cut, and zoom/scale analysis."""
-    props = iio.improps(video_path, plugin="pyav") if hasattr(iio, "improps") else None
     fps = 30.0
     try:
         meta = iio.immeta(video_path)
