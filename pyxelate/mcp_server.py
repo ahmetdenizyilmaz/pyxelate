@@ -20,6 +20,7 @@ from .pal import Pal
 from .styles import apply_style, list_styles, render_styles_showcase, STYLE_FUNCTIONS
 from .motion import analyze_video_motion, sync_video_motion_to_audio
 from .bar_fills import detect_video_bar_fills
+from .stroke_draws import detect_frames_stroke_draws, render_stroke_draws_proof
 from .triggers import (
     DEFAULT_TRIGGER_CONFIG,
     extract_video_sound_triggers,
@@ -159,6 +160,35 @@ TOOLS_SCHEMA: List[Dict[str, Any]] = [
         },
     },
     {
+        "name": "video_detect_stroke_draws",
+        "description": "Standalone modular detector for progressive indicator drawings (`circle_draw`, `contour_outline_draw` around objects, and `callout_line_draw` pointer lines). Returns exact drawing `start_s`, `finish_s`, `is_closed_loop`, `sweep_direction`, `draw_curve` in [0.0, 1.0], and `song_part_mapping` so scripts can selectively map chosen drawings to song parts.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "video_path": {"type": "string", "description": "Input video file path."},
+                "max_frames": {"type": "integer", "description": "Optional max frames."},
+                "min_duration_s": {
+                    "type": "number",
+                    "default": 0.28,
+                    "description": "Minimum progressive drawing duration in seconds.",
+                },
+                "allowed_shapes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["circle_draw", "contour_outline_draw", "callout_line_draw"],
+                    },
+                    "description": "Optional subset of indicator shape types to detect.",
+                },
+                "proof_image_path": {
+                    "type": "string",
+                    "description": "Optional path to save a START -> DRAWING -> FINISH + draw_curve visual verification sheet.",
+                },
+            },
+            "required": ["video_path"],
+        },
+    },
+    {
         "name": "video_extract_sound_triggers",
         "description": "Extracts configurable movement-to-sound triggers (horizontal_bar_fill, vertical_bar_fill, configurable sparse camera_zoom_in/out, hud_text_typing, state_confirm_chime, sustained_acceleration_riser, energy_emission_burst, mechanical_step_train, micro_particle_collision) and automatic musical arrangement regimes from any video.",
         "inputSchema": {
@@ -192,6 +222,11 @@ TOOLS_SCHEMA: List[Dict[str, Any]] = [
                     "type": "boolean",
                     "default": True,
                     "description": "Detect horizontal & vertical bar fills as exact curve-locked song parts.",
+                },
+                "enable_stroke_draws": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Opt-in flag (default False): include circle/contour/callout drawings from `stroke_draws.py`.",
                 },
                 "config": {
                     "type": "object",
@@ -346,6 +381,33 @@ def _handle_tool_call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         res["elapsed_s"] = round(time.perf_counter() - t0, 2)
         return res
 
+    if name == "video_detect_stroke_draws":
+        vid_p = args["video_path"]
+        max_f = args.get("max_frames")
+        fps = 30.0
+        try:
+            fps = float(iio.immeta(vid_p).get("fps", 30.0))
+        except Exception:
+            fps = 30.0
+        frames = []
+        for frame in iio.imiter(vid_p):
+            frames.append(frame)
+            if max_f is not None and len(frames) >= int(max_f):
+                break
+        res = detect_frames_stroke_draws(
+            frames,
+            fps=fps,
+            min_duration_s=float(args.get("min_duration_s", 0.28)),
+            allowed_shapes=args.get("allowed_shapes"),
+        )
+        res["video_path"] = vid_p
+        if args.get("proof_image_path"):
+            res["proof_image_path"] = render_stroke_draws_proof(
+                frames, res, str(args["proof_image_path"])
+            )
+        res["elapsed_s"] = round(time.perf_counter() - t0, 2)
+        return res
+
     if name == "video_extract_sound_triggers":
         cfg = dict(DEFAULT_TRIGGER_CONFIG)
         if isinstance(args.get("config"), dict):
@@ -356,6 +418,7 @@ def _handle_tool_call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             "zoom_min_sigma",
             "zoom_include_whoosh",
             "enable_bar_fills",
+            "enable_stroke_draws",
         ):
             if key in args and args[key] is not None:
                 cfg[key] = args[key]

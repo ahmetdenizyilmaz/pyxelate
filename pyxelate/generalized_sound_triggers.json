@@ -17,6 +17,8 @@
     "zoom_include_whoosh": false,
     "enable_bar_fills": true,
     "bar_fill_min_duration_s": 0.65,
+    "enable_stroke_draws": false,
+    "stroke_draw_min_duration_s": 0.28,
     "enable_hud_text_ticks": true,
     "hud_tick_cooldown_s": 0.14,
     "enable_confirm_chimes": true,
@@ -78,6 +80,30 @@
       "soundbit_preset": "aloboi_warm_lead",
       "layer_preset": "pc98_opna_glass_arp",
       "pitch_mapping": "Exact song-part match: vertical pitch height & chord voicing climb/descend 1:1 with `fill_curve[t]` (`vertical_btt` rises, `vertical_ttb`/drain descends) with completion chord hit."
+    },
+    {
+      "id": "circle_draw",
+      "modular_module": "pyxelate.stroke_draws (opt-in via enable_stroke_draws or standalone CLI/MCP tool video_detect_stroke_draws)",
+      "cv_detector": "Persistent thin circular/elliptical stroke (net_addition_ratio >= 0.68, ellipse_cv <= 0.088, angular_coverage >= 240 deg) progressively drawn around an object from `start_s` to exact `finish_s`.",
+      "soundbit_preset": "pc98_opna_glass_arp",
+      "finish_accent_preset": "trig_confirm_chime",
+      "pitch_mapping": "Circular orbiting arpeggio following `draw_curve[t]` from `start_s` and resolving with a loop-closure harmonic chime on `finish_s`."
+    },
+    {
+      "id": "contour_outline_draw",
+      "modular_module": "pyxelate.stroke_draws (opt-in via enable_stroke_draws or standalone CLI/MCP tool video_detect_stroke_draws)",
+      "cv_detector": "Persistent thin closed/semi-closed perimeter line drawn around an irregular object, tumor, organ, or box from `start_s` to exact `finish_s`.",
+      "soundbit_preset": "pc98_opna_glass_arp",
+      "finish_accent_preset": "trig_confirm_chime",
+      "pitch_mapping": "Contour-tracing melodic arpeggio locked to `draw_curve[t]` with harmonic resolution chime at `finish_s`."
+    },
+    {
+      "id": "callout_line_draw",
+      "modular_module": "pyxelate.stroke_draws (opt-in via enable_stroke_draws or standalone CLI/MCP tool video_detect_stroke_draws)",
+      "cv_detector": "Persistent thin pointer/leader/L-shaped indicator line extending monotonically from label to target object (`start_s` -> `finish_s`).",
+      "soundbit_preset": "aloboi_nostalgic_pluck",
+      "finish_accent_preset": "trig_micro_droplet_ping",
+      "pitch_mapping": "Smooth indicator glide following `draw_curve[t]` with a target-lock droplet ping at `finish_s`."
     },
     {
       "id": "camera_zoom_in",

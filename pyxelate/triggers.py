@@ -17,6 +17,7 @@ import imageio.v3 as iio
 from .fast_ops import resize_float, rgb2hsv_fast
 from .motion import analyze_frames_motion
 from .bar_fills import detect_frames_bar_fills
+from .stroke_draws import detect_frames_stroke_draws
 
 
 CATALOG_PATH = Path(__file__).with_name("generalized_sound_triggers.json")
@@ -29,6 +30,8 @@ DEFAULT_TRIGGER_CONFIG: Dict[str, Any] = {
     "zoom_include_whoosh": False,
     "enable_bar_fills": True,
     "bar_fill_min_duration_s": 0.65,
+    "enable_stroke_draws": False,  # Modular opt-in: use `pyxelate.stroke_draws` independently or set True
+    "stroke_draw_min_duration_s": 0.30,
     "enable_hud_text_ticks": True,
     "hud_tick_cooldown_s": 0.14,
     "enable_confirm_chimes": True,
@@ -232,6 +235,36 @@ def extract_generalized_triggers(
                     "song_part_mapping": bf["song_part_mapping"],
                     "fill_curve": bf["fill_curve"],
                     "intensity": 0.95,
+                }
+            )
+
+    # 0b. Optional Modular Stroke / Circle / Contour-Outline / Callout-Line Draw Detector
+    # Disabled by default (`enable_stroke_draws=False`) so scripts can inspect `pyxelate.stroke_draws`
+    # independently without crowding the soundtrack unless explicitly opted in.
+    stroke_draws: List[Dict[str, Any]] = []
+    if cfg.get("enable_stroke_draws", False):
+        sd_res = detect_frames_stroke_draws(
+            frames,
+            fps=fps,
+            min_duration_s=float(cfg.get("stroke_draw_min_duration_s", 0.30)),
+        )
+        stroke_draws = sd_res["stroke_draws"]
+        for sd in stroke_draws:
+            events.append(
+                {
+                    "trigger": sd["shape_type"],
+                    "time_s": sd["start_s"],
+                    "end_s": sd["end_s"],
+                    "finish_s": sd["finish_s"],
+                    "duration_s": sd["duration_s"],
+                    "is_closed_loop": sd["is_closed_loop"],
+                    "sweep_direction": sd["sweep_direction"],
+                    "bbox_norm": sd["bbox_norm"],
+                    "preset": sd["song_part_mapping"]["recommended_preset"],
+                    "finish_accent_preset": sd["song_part_mapping"]["finish_accent_preset"],
+                    "song_part_mapping": sd["song_part_mapping"],
+                    "draw_curve": sd["draw_curve"],
+                    "intensity": 0.88,
                 }
             )
 
@@ -439,6 +472,8 @@ def extract_generalized_triggers(
         "raw_zoom_candidates": len(base["scale_events"]),
         "bar_fill_count": len(bar_fills),
         "bar_fills": bar_fills,
+        "stroke_draw_count": len(stroke_draws),
+        "stroke_draws": stroke_draws,
         "trigger_counts": counts,
         "regimes": regimes,
         "scene_cuts": base["scene_cuts"],
