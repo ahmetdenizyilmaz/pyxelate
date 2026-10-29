@@ -193,4 +193,6 @@ Available MCP tools:
 - `video_analyze_motion` — Extracts major scene cuts, consonant camera zoom-in/zoom-out windows (`±5`, `±7`, `±12` semitones), focal centroids, and per-frame motion energy for audio composition.
 - `video_stylize` — Stylizes a video clip and optionally muxes a WAV soundtrack.
 - `video_sync_motion_to_audio` — Refines a video's camera zooms, pullbacks, focal tracking, and sub-bass (`20–135 Hz`) micro-zoom punches in high-resolution pre-pixel space to lock onto a rendered music WAV track before applying pixel stylization (e.g. `pc98_cyber`).
+- `video_detect_bar_fills` — Computer-vision horizontal (`horizontal_ltr`, `horizontal_rtl`) and vertical (`vertical_btt`, `vertical_ttb`) progress bar, energy/dose meter, capacitor column, and multi-bar array detector returning frame-accurate `fill_curve` trajectories in `[0.0, 1.0]` for 1:1 song-part matching (`pyxelate/bar_fills.py`).
+- `video_extract_sound_triggers` — Extracts generalized movement-to-sound triggers, curve-locked horizontal/vertical bar-fill song sections, and musical arrangement regimes with configurable zoom policy (`zoom_mode`: `"off"` | `"major_only"` [default, avoids triggering on minor zooms] | `"probabilistic"` | `"musical_subtle"` | `"all"`, `zoom_cooldown_s`, `zoom_min_sigma`, `enable_bar_fills`).
 

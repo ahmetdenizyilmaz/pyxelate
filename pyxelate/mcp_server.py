@@ -19,7 +19,12 @@ from .pyx import Pyx
 from .pal import Pal
 from .styles import apply_style, list_styles, render_styles_showcase, STYLE_FUNCTIONS
 from .motion import analyze_video_motion, sync_video_motion_to_audio
-from .triggers import extract_video_sound_triggers, load_trigger_catalog
+from .bar_fills import detect_video_bar_fills
+from .triggers import (
+    DEFAULT_TRIGGER_CONFIG,
+    extract_video_sound_triggers,
+    load_trigger_catalog,
+)
 
 
 TOOLS_SCHEMA: List[Dict[str, Any]] = [
@@ -137,14 +142,61 @@ TOOLS_SCHEMA: List[Dict[str, Any]] = [
         },
     },
     {
+        "name": "video_detect_bar_fills",
+        "description": "Detects 1D horizontal (`horizontal_ltr`, `horizontal_rtl`) and vertical (`vertical_btt`, `vertical_ttb`) progress bars, energy/dose meters, gauges, capacitor/column fills, and stacked multi-bar arrays in any video, returning frame-accurate `fill_curve` trajectories in [0.0, 1.0] for 1:1 song-part synchronization.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "video_path": {"type": "string", "description": "Input video file path."},
+                "max_frames": {"type": "integer", "description": "Optional max frames."},
+                "min_duration_s": {
+                    "type": "number",
+                    "default": 0.65,
+                    "description": "Minimum duration in seconds for a valid progressive bar fill/drain.",
+                },
+            },
+            "required": ["video_path"],
+        },
+    },
+    {
         "name": "video_extract_sound_triggers",
-        "description": "Extracts generalized movement-to-sound triggers (camera_zoom_in/out, hud_text_typing, state_confirm_chime, sustained_acceleration_riser, energy_emission_burst, mechanical_step_train, micro_particle_collision) and automatic musical arrangement regimes (intro_ambient, macro_driving_pulse, macro_double_time_accel, micro_ambient_particles, resolution_outro) from any video.",
+        "description": "Extracts configurable movement-to-sound triggers (horizontal_bar_fill, vertical_bar_fill, configurable sparse camera_zoom_in/out, hud_text_typing, state_confirm_chime, sustained_acceleration_riser, energy_emission_burst, mechanical_step_train, micro_particle_collision) and automatic musical arrangement regimes from any video.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "video_path": {"type": "string", "description": "Input video file path."},
                 "max_frames": {"type": "integer", "description": "Optional max frames."},
                 "include_catalog": {"type": "boolean", "default": False},
+                "zoom_mode": {
+                    "type": "string",
+                    "enum": ["off", "major_only", "probabilistic", "musical_subtle", "all"],
+                    "default": "major_only",
+                    "description": "Controls how often camera zooms trigger sweeps. Default 'major_only' avoids triggering on every minor zoom.",
+                },
+                "zoom_cooldown_s": {
+                    "type": "number",
+                    "default": 14.0,
+                    "description": "Minimum cooldown in seconds between zoom triggers.",
+                },
+                "zoom_min_sigma": {
+                    "type": "number",
+                    "default": 2.25,
+                    "description": "Minimum radial divergence sigma threshold for 'major_only' zooms.",
+                },
+                "zoom_include_whoosh": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Whether zoom triggers also layer an air whoosh burst.",
+                },
+                "enable_bar_fills": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Detect horizontal & vertical bar fills as exact curve-locked song parts.",
+                },
+                "config": {
+                    "type": "object",
+                    "description": "Optional full trigger config dictionary overriding DEFAULT_TRIGGER_CONFIG.",
+                },
             },
             "required": ["video_path"],
         },
@@ -285,9 +337,32 @@ def _handle_tool_call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         res["elapsed_s"] = round(time.perf_counter() - t0, 2)
         return res
 
+    if name == "video_detect_bar_fills":
+        res = detect_video_bar_fills(
+            args["video_path"],
+            max_frames=args.get("max_frames"),
+            min_duration_s=float(args.get("min_duration_s", 0.65)),
+        )
+        res["elapsed_s"] = round(time.perf_counter() - t0, 2)
+        return res
+
     if name == "video_extract_sound_triggers":
+        cfg = dict(DEFAULT_TRIGGER_CONFIG)
+        if isinstance(args.get("config"), dict):
+            cfg.update(args["config"])
+        for key in (
+            "zoom_mode",
+            "zoom_cooldown_s",
+            "zoom_min_sigma",
+            "zoom_include_whoosh",
+            "enable_bar_fills",
+        ):
+            if key in args and args[key] is not None:
+                cfg[key] = args[key]
         res = extract_video_sound_triggers(
-            args["video_path"], max_frames=args.get("max_frames")
+            args["video_path"],
+            max_frames=args.get("max_frames"),
+            config=cfg,
         )
         if args.get("include_catalog"):
             res["catalog"] = load_trigger_catalog()

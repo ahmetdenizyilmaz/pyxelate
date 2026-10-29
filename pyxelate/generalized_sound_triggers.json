@@ -1,17 +1,42 @@
 {
   "schema": "pyxelate-generalized-sound-triggers",
-  "version": "1.0.0",
-  "description": "Generalized computer-vision movement-to-sound & musical regime rules applicable to any mechanism, science explainer, UI, documentary, or pixel-art video.",
+  "version": "1.1.0",
+  "description": "Configurable computer-vision movement-to-sound, horizontal/vertical bar-fill song-part matcher, & automatic musical regime rules applicable to any mechanism, science explainer, UI, documentary, or pixel-art video.",
+  "default_config": {
+    "zoom_mode": "major_only",
+    "zoom_mode_options": [
+      "off",
+      "major_only",
+      "probabilistic",
+      "musical_subtle",
+      "all"
+    ],
+    "zoom_min_sigma": 2.25,
+    "zoom_cooldown_s": 14.0,
+    "zoom_probability": 0.35,
+    "zoom_include_whoosh": false,
+    "enable_bar_fills": true,
+    "bar_fill_min_duration_s": 0.65,
+    "enable_hud_text_ticks": true,
+    "hud_tick_cooldown_s": 0.14,
+    "enable_confirm_chimes": true,
+    "chime_cooldown_s": 1.2,
+    "enable_energy_bursts": true,
+    "burst_cooldown_s": 2.2,
+    "enable_mechanical_pops": true,
+    "enable_micro_pings": true
+  },
   "acoustic_design_principles": {
-    "harmonic_bed_headroom": "Use low-harmonic (H2/H1 < 0.18) warm triangle sub-bass + soft low-pass filtered ostinato plucks cycling through a minimalist 3-chord loop (e.g. i -> VI -> III or vi -> IV -> I) so 800-8000 Hz remains completely open for discrete visual movement triggers.",
-    "regime_switching": "Switch drum/bass rhythm density automatically based on visual scene topology rather than running a static drum beat over the entire video.",
-    "continuous_vs_discrete": "Continuous camera/flow movements (zooms, accelerations) map to continuous Hz/semitone pitch glides; discrete sub-part movements (UI text, buttons, blades, collisions, shrinking cells) map to tight <90ms transient ticks, chimes, pings, and pops."
+    "harmonic_bed_headroom": "Use low-harmonic (H2/H1 < 0.18) warm triangle sub-bass + soft low-pass filtered ostinato plucks cycling through a minimalist 3-chord loop so 800-8000 Hz remains open for visual movement triggers.",
+    "sparse_zoom_policy": "Do NOT trigger pitch sweeps on every minor camera zoom. Default `zoom_mode='major_only'` enforces a >=14s cooldown and high divergence threshold (>=2.25 sigma) so zoom sweeps only punctuate major structural scale jumps (or can be disabled with `zoom_mode='off'`).",
+    "exact_bar_fill_song_parts": "Detected 1D horizontal (`horizontal_ltr` / `horizontal_rtl`) and vertical (`vertical_btt` / `vertical_ttb`) bar fills/drains become dedicated curve-locked song parts where scale degree, rhythmic subdivision density, velocity, and stereo pan track `fill_curve[t] ∈ [0.0, 1.0]` frame-for-frame and resolve on 100% completion.",
+    "regime_switching": "Switch drum/bass rhythm density automatically based on visual scene topology rather than running a static drum beat over the entire video."
   },
   "regimes": [
     {
       "id": "intro_ambient",
-      "visual_condition": "Opening establisher before first structural beat anchor (< ~7% of video or pre-first major scene setup).",
-      "musical_behavior": "Hold back kick & hi-hats; play soft 3-chord ostinato plucks + discrete UI/zoom triggers."
+      "visual_condition": "Opening establisher before first structural beat anchor.",
+      "musical_behavior": "Hold back kick & hi-hats; play soft 3-chord ostinato plucks + discrete UI triggers."
     },
     {
       "id": "macro_driving_pulse",
@@ -19,9 +44,14 @@
       "musical_behavior": "Steady 4-on-the-floor kick + eighth-note low-pass sub-bass pulse + minimalist 3-chord arpeggio bed."
     },
     {
+      "id": "bar_fill_charge_section",
+      "visual_condition": "Active 1D horizontal or vertical bar/gauge/column fill or drain (`fill_curve[t]` in [0, 1]).",
+      "musical_behavior": "Exact curve-locked song part: lead & arpeggio pitch degree, velocity, rhythmic subdivision (8ths -> 16ths), and stereo pan follow `fill_curve[t]` 1:1, landing on a tonic/fifth accent hit when `fill_curve` hits 1.0."
+    },
+    {
       "id": "macro_double_time_accel",
       "visual_condition": "Sustained multi-second high laminar flow or monotonic energy buildup.",
-      "musical_behavior": "Double-time 16th/8th driving sub-bass pulse + multi-bar ascending pitch riser climbing across octaves."
+      "musical_behavior": "Double-time 16th/8th driving sub-bass pulse + multi-bar ascending pitch climb."
     },
     {
       "id": "micro_ambient_particles",
@@ -36,18 +66,32 @@
   ],
   "triggers": [
     {
+      "id": "horizontal_bar_fill",
+      "cv_detector": "Elongated horizontal strip (aspect >= 2.4, strip_contrast >= 1.85) with contiguous monotonic 1D fill front (|rho| >= 0.80).",
+      "soundbit_preset": "pc98_opna_glass_arp",
+      "layer_preset": "aloboi_nostalgic_pluck",
+      "pitch_mapping": "Exact song-part match: 2-octave scale degree, 8th->16th rhythm density, stereo pan (-18..+18), and velocity (74..122) follow `fill_curve[t]` 1:1 with completion chord hit at 100%."
+    },
+    {
+      "id": "vertical_bar_fill",
+      "cv_detector": "Elongated vertical strip (aspect >= 2.4, strip_contrast >= 1.85) with contiguous monotonic 1D fill front (|rho| >= 0.80).",
+      "soundbit_preset": "aloboi_warm_lead",
+      "layer_preset": "pc98_opna_glass_arp",
+      "pitch_mapping": "Exact song-part match: vertical pitch height & chord voicing climb/descend 1:1 with `fill_curve[t]` (`vertical_btt` rises, `vertical_ttb`/drain descends) with completion chord hit."
+    },
+    {
       "id": "camera_zoom_in",
-      "cv_detector": "Positive radial optical-flow divergence + expanding salience second-moment radius.",
+      "configurable_via": "zoom_mode ('off' | 'major_only' | 'probabilistic' | 'musical_subtle' | 'all'), zoom_min_sigma, zoom_cooldown_s",
+      "cv_detector": "Positive radial optical-flow divergence exceeding `zoom_min_sigma` after `zoom_cooldown_s`.",
       "soundbit_preset": "trig_zoom_sweep_pure",
-      "layer_preset": "trig_whoosh_air_burst",
-      "pitch_mapping": "Continuous upward consonant glide (+12 or +19 semitones) across exact zoom duration."
+      "pitch_mapping": "Continuous upward consonant glide (+12 semitones) on major structural zoom transitions only."
     },
     {
       "id": "camera_zoom_out",
-      "cv_detector": "Negative radial optical-flow divergence + contracting salience second-moment radius.",
+      "configurable_via": "zoom_mode ('off' | 'major_only' | 'probabilistic' | 'musical_subtle' | 'all'), zoom_min_sigma, zoom_cooldown_s",
+      "cv_detector": "Negative radial optical-flow divergence exceeding `zoom_min_sigma` after `zoom_cooldown_s`.",
       "soundbit_preset": "trig_zoom_sweep_pure",
-      "layer_preset": "trig_whoosh_air_burst",
-      "pitch_mapping": "Continuous downward consonant glide (-12 or -19 semitones) across exact zoom-out duration."
+      "pitch_mapping": "Continuous downward consonant glide (-12 semitones) on major structural zoom transitions only."
     },
     {
       "id": "hud_text_typing",
@@ -62,14 +106,8 @@
       "pitch_mapping": "Two-note rising fifth (+7 semitones) glassy FM confirmation chime."
     },
     {
-      "id": "sustained_acceleration_riser",
-      "cv_detector": "Multi-second (>= 2.5s) sustained laminar flow / energy buildup within a shot.",
-      "soundbit_preset": "trig_zoom_sweep_pure",
-      "pitch_mapping": "Multi-bar continuous ascending harmonic pitch ramp + accelerating bass subdivision."
-    },
-    {
       "id": "energy_emission_burst",
-      "cv_detector": "Sharp positive surge in bright high-chroma emissive pixels (beams, flashes, plasma, sparks).",
+      "cv_detector": "Sharp positive surge in bright high-chroma emissive pixels.",
       "soundbit_preset": "trig_whoosh_air_burst",
       "pitch_mapping": "Filtered air/radiation noise burst paired with sub-bass transient thump."
     },
@@ -77,7 +115,7 @@
       "id": "mechanical_step_train",
       "cv_detector": "Cluster of >= 4 rhythmic motion-energy sub-peaks (2-10 Hz) within a structural or grid shot.",
       "soundbit_preset": "trig_stepped_mech_pop",
-      "pitch_mapping": "Tactile 75ms pitch-stepped pulse pops (alternating octave/fifth or descending/ascending with object area)."
+      "pitch_mapping": "Tactile 75ms pitch-stepped pulse pops."
     },
     {
       "id": "micro_particle_collision",
